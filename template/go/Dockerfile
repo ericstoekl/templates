@@ -1,9 +1,10 @@
 FROM golang:1.9.4-alpine3.7 as builder
 
-RUN apk --no-cache add curl \
+RUN apk --no-cache add curl git \
     && echo "Pulling watchdog binary from Github." \
     && curl -sSL https://github.com/openfaas/faas/releases/download/0.8.0/fwatchdog > /usr/bin/fwatchdog \
     && chmod +x /usr/bin/fwatchdog \
+    && curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh \
     && apk del curl --no-cache
 
 WORKDIR /go/src/handler
@@ -11,6 +12,8 @@ COPY . .
 
 # Run a gofmt and exclude all vendored code.
 RUN test -z "$(gofmt -l $(find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./function/vendor/*"))" || { echo "Run \"gofmt -s -w\" on your Golang code"; exit 1; }
+
+RUN dep init
 
 RUN CGO_ENABLED=0 GOOS=linux \
     go build --ldflags "-s -w" -a -installsuffix cgo -o handler . && \
